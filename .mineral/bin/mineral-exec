@@ -4,7 +4,7 @@ set -e
 
 mineral_work=$(dirname $(readlink -f "$0"))/..
 mineral_root=${mineral_work}/..
-mineral_arch=$(cat ${mineral_root}/etc/apk/arch 2>/dev/null)
+mineral_arch=$(cat ${mineral_root}/etc/apk/arch 2>/dev/null || true)
 
 if [ -n "${mineral_arch}" -a "${mineral_arch}" != $(uname -m) ]; then
     qemu="-q qemu-${mineral_arch}"
