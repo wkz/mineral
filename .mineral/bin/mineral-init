@@ -1,0 +1,60 @@
+#!/bin/sh
+
+set -e
+
+mineral_work=$(dirname $(readlink -f "$0"))/..
+mineral_root=${mineral_work}/..
+
+apk_get()
+{
+    if [ -x ${mineral_work}/bin/apk.static ]; then
+	return 0;
+    fi
+
+    local version=$(
+	wget -q -O - ${mirror}/${arch}/APKINDEX.tar.gz |
+	    tar xz -O APKINDEX | awk -F: '
+	    	/P:apk-tools-static/ { found=1 }
+		/V/ { if (found) { print($2); exit(0); } }')
+
+
+    wget -q -O - ${mirror}/${arch}/apk-tools-static-${version}.apk | \
+	tar xOz sbin/apk.static >${mineral_work}/bin/apk.static
+
+    chmod +x ${mineral_work}/bin/apk.static
+}
+
+arch=$(uname -m)
+version=latest-stable
+recommended=alpine-base
+
+while getopts "a:Rv:" opt; do
+    case ${opt} in
+	a)
+	    arch=$OPTARG
+	    qemu="-q qemu-$arch"
+	    ;;
+	v)
+	    version=$OPTARG
+	    ;;
+	R)
+	    recommened=
+	    ;;
+	*)
+	    exit 1
+	    ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+packages="${recommended} ${*}"
+mirror=http://dl-cdn.alpinelinux.org/alpine/${version}/main
+
+apk_get
+
+mkdir -p ${mineral_root}/etc/apk
+echo ${mirror} >${mineral_root}/etc/apk/repositories
+
+exec mineral-exec ${qemu} -0 /.mineral/bin/apk.static \
+     -U --allow-untrusted --initdb add ${packages}

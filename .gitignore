@@ -1,0 +1,7 @@
+*~
+/*
+/*/
+!.gitignore
+!/mineral
+!/.mineral/
+/.mineral/bin/apk.static

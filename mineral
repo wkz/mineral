@@ -1,0 +1,64 @@
+#!/bin/sh
+
+set -e
+
+export PATH=$(dirname $(readlink -f "$0"))/.mineral/bin:${PATH}
+
+usage()
+{
+    cat <<EOF
+usage: ${0} <command> [<args>]
+
+  ${0} init [-a ARCH] [-v VERSION] [-R] [package(s)]
+    Initialize the current mineral with the specified ARCHitecture and
+    Alpine VERSION using the listed packages.
+
+    -a ARCH     Create a mineral using this architecture. Depends on
+                the corresponding qemu-user(1) package being
+                installed. By default, the host architecture is used.
+
+    -v VERSION  Use this version of Alpine. By default "latest" is
+                used.
+
+    -R          Don't install the basic recommended packages. This
+                lets you create smaller minerals, but requires more
+                in-depth knowledge of Alpine.
+
+  ${0} exec [<proot-options>] [<program> [<args>]]
+    Execute program in context of the mineral. Accepts any options
+    recognized by proot(1), e.g. -0 to emulate the superuser. If no
+    program is specified, /bin/sh is launched.
+
+    The following host paths are made available to the mineral. To
+    change these, modify .mineral/etc/bindings.
+      - /etc/resolv.conf
+      - /proc
+      - /sys
+
+  ${0} help
+    Display this message.
+
+EOF
+}
+
+if [ $# -lt 1 ]; then
+    usage && exit 1
+fi
+
+cmd=${1}
+shift
+
+case ${cmd} in    
+    "help")
+	usage && exit 0
+	;;
+    "init")
+	mineral-init "$@"
+	;;
+    "exec")
+	mineral-exec "$@"
+	;;
+
+    *)
+	usage && exit 1
+esac
