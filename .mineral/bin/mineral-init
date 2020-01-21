@@ -19,7 +19,7 @@ apk_get()
 
 
     wget -q -O - ${mirror}/${arch}/apk-tools-static-${version}.apk | \
-	tar xOz sbin/apk.static >${mineral_work}/bin/apk.static
+	tar xOz sbin/apk.static >${mineral_work}/bin/apk.static 2>/dev/null
 
     chmod +x ${mineral_work}/bin/apk.static
 }
