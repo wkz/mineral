@@ -41,6 +41,9 @@ usage: ${0} <command> [<args>]
       - /proc
       - /sys
 
+  ${0} qemu
+    Launch QEMU system emulation of this mineral.
+
   ${0} help
     Display this message.
 
@@ -64,6 +67,8 @@ case ${cmd} in
     "init")
 	mineral-init "$@"
 	;;
+    "qemu")
+	mineral-qemu "$@"
 	;;
 
     *)

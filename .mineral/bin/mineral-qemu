@@ -1,0 +1,77 @@
+#!/bin/sh
+
+set -e
+
+kernel_get()
+{
+    if [ -f ${sysroot}/boot/vmlinuz* ]; then
+	return 0;
+    fi
+
+    mineral-exec -0 /.mineral/bin/apk.static --no-scripts add \
+		 linux-lts linux-firmware-none
+}
+
+initrd_get()
+{
+    if [ -f ${sysroot}/boot/initramfs-mineral ]; then
+	return 0;
+    fi
+
+    mineral-exec -0 mkinitfs \
+		 -c /.mineral/etc/mkinitfs/mkinitfs.conf \
+		 $(ls ${sysroot}/lib/modules | head -n 1)
+}
+
+inittab_set()
+{
+    # If the first line contains "mineral", don't touch it. That
+    # allows a user to make changes to it.
+    if [ -e ${sysroot}/etc/inittab ] && head -n 1 ${sysroot}/etc/inittab | grep -q mineral; then
+	return 0;
+    fi
+
+    
+    if [ -e ${sysroot}/etc/inittab ]; then
+	mv ${sysroot}/etc/inittab ${sysroot}/etc/inittab.alpine
+    fi
+
+    ln -s ../.mineral/etc/inittab ${sysroot}/etc/inittab
+}
+
+qarch=${arch}
+mach=
+append=
+case ${arch} in
+    aarch64)
+	mach="-M virt -cpu cortex-a53"
+	append="console=ttyAMA0"
+	;;
+    armv7)
+    	qarch=arm
+    	mach="-M virt -cpu cortex-a15"
+    	append="console=ttyAMA0"
+    	;;
+    ppc64le)
+	mach="-M pseries,cap-htm=off -cpu power9"
+	append="console=hvc0"
+	;;
+    x86_64)
+    	append="console=ttyS0"
+    	;;
+    *)
+	echo "mineral has no machine definition for ${arch}" >&2
+	exit 1
+	;;
+esac
+
+kernel_get
+initrd_get
+inittab_set
+
+unshare -r qemu-system-${qarch} ${mach} -nographic \
+	-kernel ${sysroot}/boot/vmlinuz-* \
+	-initrd ${sysroot}/boot/initramfs-mineral \
+	-device virtio-9p-pci,fsdev=root,mount_tag=root \
+	-fsdev local,id=root,path=${sysroot},security_model=none \
+	-append "${append} quiet"
