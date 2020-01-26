@@ -1,0 +1,2 @@
+none /proc	proc	defaults	0 0
+root /newroot	9p	trans=virtio	0 0

@@ -1,0 +1,11 @@
+#!/bin/sh
+
+mkdir -p /proc /sys
+mount none /proc -t proc
+mount none /sys	 -t sysfs
+mount none /dev	 -t devtmpfs
+mount none /tmp	 -t tmpfs
+
+hostname $(cat /etc/hostname)
+
+ip link set dev lo up

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+busybox modprobe virtio_pci
+busybox modprobe 9pnet_virtio
+busybox modprobe 9p
+
+busybox mount -a
+
+init=$(busybox awk '
+BEGIN {
+	RS=" ";
+	FS="=";
+}
+
+/init/ {
+       print($2);
+}' /proc/cmdline)
+
+exec busybox switch_root /newroot ${init:=/sbin/init}
