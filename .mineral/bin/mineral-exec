@@ -2,14 +2,19 @@
 
 set -e
 
-mineral_work=$(dirname $(readlink -f "$0"))/..
-mineral_root=${mineral_work}/..
-mineral_arch=$(cat ${mineral_root}/etc/apk/arch 2>/dev/null || true)
+if [ "${arch}" != $(uname -m) ]; then
+    qarch=${arch}
+    case ${arch} in
+	armv7)
+	    qarch=arm
+	    ;;
+	x86)
+	    qarch=i386
+    esac
 
-if [ -n "${mineral_arch}" -a "${mineral_arch}" != $(uname -m) ]; then
-    qemu="-q qemu-${mineral_arch}"
+    qemu="-q qemu-${qarch}"
 fi
 
-exec proot ${qemu} -r ${mineral_root} -w / \
-     $(cat ${mineral_work}/etc/bindings | sed -e 's/^/-b /g') \
+exec proot ${qemu} -r ${sysroot} -w / \
+     $(cat ${private}/etc/bindings | sed -e 's/^/-b /g') \
      $@

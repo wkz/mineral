@@ -2,43 +2,65 @@
 
 set -e
 
-mineral_work=$(dirname $(readlink -f "$0"))/..
-mineral_root=${mineral_work}/..
+hostname_set()
+{
+    if [ -z "${1}" ]; then
+	return 0;
+    fi
+
+    mkdir -p ${sysroot}/etc
+    echo ${1} >${sysroot}/etc/hostname
+}
+
+mirror_set()
+{
+    if [ -f ${sysroot}/etc/apk/repositories ]; then
+	return 0;
+    fi
+
+    mkdir -p ${sysroot}/etc/apk
+    echo http://dl-cdn.alpinelinux.org/alpine/${1}/main >\
+	 ${sysroot}/etc/apk/repositories
+}
 
 apk_get()
 {
-    if [ -x ${mineral_work}/bin/apk.static ]; then
+    local mirror=$(cat ${sysroot}/etc/apk/repositories)
+
+    if [ -x ${private}/bin/apk.static ]; then
 	return 0;
     fi
 
     local version=$(
-	wget -q -O - ${mirror}/${arch}/APKINDEX.tar.gz |
+	wget -q -O - ${mirror}/${1}/APKINDEX.tar.gz |
 	    tar xz -O APKINDEX | awk -F: '
 	    	/P:apk-tools-static/ { found=1 }
 		/V/ { if (found) { print($2); exit(0); } }')
 
 
-    wget -q -O - ${mirror}/${arch}/apk-tools-static-${version}.apk | \
-	tar xOz sbin/apk.static >${mineral_work}/bin/apk.static 2>/dev/null
+    wget -q -O - ${mirror}/${1}/apk-tools-static-${version}.apk | \
+	tar xOz sbin/apk.static >${private}/bin/apk.static 2>/dev/null
 
-    chmod +x ${mineral_work}/bin/apk.static
+    chmod +x ${private}/bin/apk.static
 }
 
-arch=$(uname -m)
-version=latest-stable
+hostname=
 recommended=alpine-base
+version=latest-stable
 
-while getopts "a:Rv:" opt; do
+while getopts "a:h:Rv:" opt; do
     case ${opt} in
 	a)
-	    arch=$OPTARG
-	    qemu="-q qemu-$arch"
+	    arch=${OPTARG}
+	    ;;
+	h)
+	    hostname=${OPTARG}
 	    ;;
 	v)
-	    version=$OPTARG
+	    version=${OPTARG}
 	    ;;
 	R)
-	    recommened=
+	    recommended=
 	    ;;
 	*)
 	    exit 1
@@ -48,13 +70,11 @@ done
 
 shift $((OPTIND - 1))
 
-packages="${recommended} ${*}"
-mirror=http://dl-cdn.alpinelinux.org/alpine/${version}/main
+packages="${*} ${recommended}"
 
-apk_get
+hostname_set ${hostname}
+mirror_set ${version}
+apk_get ${arch}
 
-mkdir -p ${mineral_root}/etc/apk
-echo ${mirror} >${mineral_root}/etc/apk/repositories
-
-exec mineral-exec ${qemu} -0 /.mineral/bin/apk.static \
+exec mineral-exec -0 /.mineral/bin/apk.static \
      -U --allow-untrusted --initdb add ${packages}
